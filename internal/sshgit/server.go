@@ -176,6 +176,9 @@ func (s *Server) dispatchExec(ctx context.Context, conn *ssh.ServerConn, channel
 	if writeAccess {
 		s.repositories.ScheduleMaintenance(repositoryMeta)
 		s.repositories.EmitRepositoryEvent(ctx, repositoryMeta, store.RepositoryWebhookEventPush, &user)
+		s.repositories.RecordGitOperation("push", "ssh")
+	} else {
+		s.repositories.RecordGitOperation("fetch", "ssh")
 	}
 	return nil
 }
