@@ -23,6 +23,7 @@ import (
 	"github.com/yashlunawat/forge/internal/config"
 	"github.com/yashlunawat/forge/internal/repository"
 	"github.com/yashlunawat/forge/internal/store"
+	"github.com/yashlunawat/forge/internal/telemetry"
 )
 
 var namePattern = regexp.MustCompile(`^[a-zA-Z0-9._-]+$`)
@@ -33,6 +34,12 @@ type Server struct {
 	store        store.Store
 	repositories *repository.Service
 	router       http.Handler
+	telemetry    *telemetry.Client
+}
+
+// SetTelemetry attaches an anonymous usage telemetry client. A nil client disables it.
+func (s *Server) SetTelemetry(c *telemetry.Client) {
+	s.telemetry = c
 }
 
 type contextKey string
@@ -264,6 +271,7 @@ func (s *Server) handleRegister(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	s.telemetry.Capture("user_registered", nil)
 	s.writeJSON(w, http.StatusCreated, currentUserResponse{User: user})
 }
 
@@ -529,6 +537,7 @@ func (s *Server) handleCreateOrganization(w http.ResponseWriter, r *http.Request
 		s.writeError(r, w, status, err)
 		return
 	}
+	s.telemetry.Capture("organization_created", nil)
 
 	s.writeJSON(w, http.StatusCreated, organization)
 }

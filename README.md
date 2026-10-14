@@ -45,6 +45,19 @@ go mod tidy
 go run ./cmd/forge
 ```
 
+## Telemetry
+
+The server sends anonymous usage events to PostHog so the maintainer can see which versions and features are used:
+
+- `server_started`: store kind (`postgres` or `memory`), whether SSH is enabled, and `FORGE_ENV`
+- `user_registered` and `organization_created`: no properties
+- `repository_created`: owner type and visibility
+- `git_operation`: `push` or `fetch`, over `http` or `ssh`
+
+Every event also carries the Forge version, OS and architecture, keyed by a random install id stored in `$FORGE_REPOS_ROOT/.forge/telemetry.json`. User, organization and repository names, code, emails, IP addresses and settings are never sent. Forge logs a notice the first time it creates the id. The browser UI loads no analytics scripts.
+
+Turn it off with `FORGE_TELEMETRY=0` or `DO_NOT_TRACK=1`. It is also off when `CI` is set and under `go test`.
+
 ## Documentation Website
 
 The project ships a MkDocs Material documentation site in `docs/` with a quickstart, guides, and reference pages for architecture, API behavior, data model details, deployment, and testing.

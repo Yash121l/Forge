@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/yashlunawat/forge/internal/store"
+	"github.com/yashlunawat/forge/internal/telemetry"
 )
 
 type Permissions struct {
@@ -22,6 +23,17 @@ type Service struct {
 	provisioner *FilesystemProvisioner
 	maintenance *MaintenanceScheduler
 	webhooks    *WebhookDispatcher
+	telemetry   *telemetry.Client
+}
+
+// SetTelemetry attaches an anonymous usage telemetry client. A nil client disables it.
+func (s *Service) SetTelemetry(c *telemetry.Client) {
+	s.telemetry = c
+}
+
+// RecordGitOperation reports a completed git push or fetch and its transport (http, ssh).
+func (s *Service) RecordGitOperation(operation, transport string) {
+	s.telemetry.Capture("git_operation", map[string]any{"operation": operation, "transport": transport})
 }
 
 func NewService(logger *slog.Logger, st store.Store, reposRoot string) (*Service, error) {
@@ -66,6 +78,10 @@ func (s *Service) CreateRepository(ctx context.Context, params store.CreateRepos
 		return store.Repository{}, err
 	}
 
+	s.telemetry.Capture("repository_created", map[string]any{
+		"owner_type": repository.OwnerType,
+		"visibility": repository.Visibility,
+	})
 	return repository, nil
 }
 

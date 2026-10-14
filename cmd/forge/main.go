@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -18,7 +19,11 @@ import (
 	"github.com/yashlunawat/forge/internal/store"
 	"github.com/yashlunawat/forge/internal/store/memory"
 	"github.com/yashlunawat/forge/internal/store/postgres"
+	"github.com/yashlunawat/forge/internal/telemetry"
 )
+
+// version is set at build time with -ldflags "-X main.version=...".
+var version = "dev"
 
 func main() {
 	cfg, err := config.Load()
@@ -45,11 +50,21 @@ func main() {
 	}
 	repositories.Start(ctx)
 
+	tel := telemetry.New(version, filepath.Join(cfg.ReposRoot, ".forge"))
+	defer tel.Flush(3 * time.Second)
+	repositories.SetTelemetry(tel)
+
 	app, err := server.New(cfg, logger, st, repositories)
 	if err != nil {
 		logger.Error("initialize server", "error", err)
 		os.Exit(1)
 	}
+	app.SetTelemetry(tel)
+	storeKind := "memory"
+	if cfg.DatabaseURL != "" {
+		storeKind = "postgres"
+	}
+	tel.Capture("server_started", map[string]any{"store": storeKind, "ssh_enabled": cfg.SSHEnabled, "environment": cfg.Environment})
 
 	httpServer := &http.Server{
 		Addr:              cfg.Address,
